@@ -5,7 +5,7 @@ import type { Teacher } from '../types/teacher'
 interface Props {
   teachers: Teacher[]
 }
-
+const selectedTeacher = ref<Teacher | null>(null)
 const props = defineProps<Props>()
 const emit = defineEmits(['back'])
 
@@ -47,6 +47,13 @@ const resetFilters = () => {
   selectedSubject.value = ''
   selectedGrade.value = ''
   selectedMode.value = ''
+}
+const openTeacherProfile = (teacher: Teacher) => {
+  selectedTeacher.value = teacher
+}
+
+const closeTeacherProfile = () => {
+  selectedTeacher.value = null
 }
 </script>
 
@@ -267,26 +274,187 @@ const resetFilters = () => {
           </div>
 
           <div class="mt-6 grid gap-3">
-            <a
-              :href="`tel:${teacher.phone}`"
-              class="rounded-2xl bg-blue-600 py-3 text-center font-bold text-white transition hover:bg-blue-700"
-            >
-              📞 Call Teacher
-            </a>
 
-            <a
-              v-if="teacher.whatsapp"
-              :href="`https://wa.me/94${teacher.whatsapp.slice(1)}`"
-              target="_blank"
-              class="rounded-2xl bg-green-500 py-3 text-center font-bold text-white transition hover:bg-green-600"
-            >
-              WhatsApp
-            </a>
-          </div>
+  <button
+    @click="openTeacherProfile(teacher)"
+    class="rounded-2xl bg-yellow-400 py-3 text-center font-bold text-gray-900 transition hover:bg-yellow-300"
+  >
+    View Full Profile
+  </button>
+
+  <a
+    :href="`tel:${teacher.phone}`"
+    class="rounded-2xl bg-blue-600 py-3 text-center font-bold text-white transition hover:bg-blue-700"
+  >
+    📞 Call Teacher
+  </a>
+
+  <a
+    v-if="teacher.whatsapp"
+    :href="`https://wa.me/94${teacher.whatsapp.slice(1)}`"
+    target="_blank"
+    class="rounded-2xl bg-green-500 py-3 text-center font-bold text-white transition hover:bg-green-600"
+  >
+    WhatsApp
+  </a>
+
+</div>
         </div>
       </div>
 
     </div>
 
   </div>
+  <!-- Teacher Profile Modal -->
+<div
+  v-if="selectedTeacher"
+  class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+>
+
+  <div class="max-h-[95vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl md:p-8">
+
+    <!-- Top -->
+    <div class="flex items-start justify-between gap-4">
+
+      <div class="flex items-center gap-4">
+
+        <img
+          v-if="selectedTeacher.photoUrl"
+          :src="selectedTeacher.photoUrl"
+          alt="Teacher photo"
+          class="h-28 w-28 rounded-3xl object-cover shadow-lg"
+        />
+
+        <div
+          v-else
+          class="flex h-28 w-28 items-center justify-center rounded-3xl bg-blue-100 text-5xl"
+        >
+          👨‍🏫
+        </div>
+
+        <div>
+          <h2 class="text-3xl font-extrabold text-gray-800">
+            {{ selectedTeacher.name }}
+          </h2>
+
+          <p class="mt-2 text-lg font-semibold text-blue-600">
+            {{ selectedTeacher.subject }}
+          </p>
+
+          <p class="text-gray-500">
+            {{ selectedTeacher.grade }}
+          </p>
+        </div>
+
+      </div>
+
+      <button
+        @click="closeTeacherProfile"
+        class="rounded-xl bg-red-100 px-4 py-2 font-bold text-red-600 transition hover:bg-red-200"
+      >
+        ✕
+      </button>
+
+    </div>
+
+    <!-- Details -->
+    <div class="mt-8 grid gap-5 md:grid-cols-2">
+
+      <div class="rounded-2xl bg-blue-50 p-5">
+        <p class="text-sm font-semibold text-gray-500">
+          District
+        </p>
+
+        <p class="mt-1 text-lg font-bold text-gray-800">
+          {{ selectedTeacher.district }}
+        </p>
+      </div>
+
+      <div class="rounded-2xl bg-blue-50 p-5">
+        <p class="text-sm font-semibold text-gray-500">
+          City / Area
+        </p>
+
+        <p class="mt-1 text-lg font-bold text-gray-800">
+          {{ selectedTeacher.city }}
+        </p>
+      </div>
+
+      <div class="rounded-2xl bg-blue-50 p-5">
+        <p class="text-sm font-semibold text-gray-500">
+          Class Types
+        </p>
+
+        <p class="mt-1 text-lg font-bold text-gray-800">
+          {{ selectedTeacher.modes.join(', ') }}
+        </p>
+      </div>
+
+      <div class="rounded-2xl bg-blue-50 p-5">
+        <p class="text-sm font-semibold text-gray-500">
+          Monthly Fee
+        </p>
+
+        <p class="mt-1 text-lg font-bold text-gray-800">
+          Rs. {{ selectedTeacher.fee || 'Not mentioned' }}
+        </p>
+      </div>
+
+      <div class="rounded-2xl bg-blue-50 p-5">
+        <p class="text-sm font-semibold text-gray-500">
+          Experience
+        </p>
+
+        <p class="mt-1 text-lg font-bold text-gray-800">
+          {{ selectedTeacher.experience || 'Not mentioned' }} years
+        </p>
+      </div>
+
+      <div class="rounded-2xl bg-blue-50 p-5">
+        <p class="text-sm font-semibold text-gray-500">
+          Qualification
+        </p>
+
+        <p class="mt-1 text-lg font-bold text-gray-800">
+          {{ selectedTeacher.qualification || 'Not mentioned' }}
+        </p>
+      </div>
+
+    </div>
+
+    <!-- Description -->
+    <div class="mt-8 rounded-3xl bg-gray-50 p-6">
+      <h3 class="text-xl font-extrabold text-gray-800">
+        About Classes
+      </h3>
+
+      <p class="mt-4 leading-relaxed text-gray-600">
+        {{ selectedTeacher.description }}
+      </p>
+    </div>
+
+    <!-- Contact -->
+    <div class="mt-8 grid gap-4 md:grid-cols-2">
+
+      <a
+        :href="`tel:${selectedTeacher.phone}`"
+        class="rounded-2xl bg-blue-600 py-4 text-center text-lg font-bold text-white transition hover:bg-blue-700"
+      >
+        📞 Call Teacher
+      </a>
+
+      <a
+        v-if="selectedTeacher.whatsapp"
+        :href="`https://wa.me/94${selectedTeacher.whatsapp.slice(1)}`"
+        target="_blank"
+        class="rounded-2xl bg-green-500 py-4 text-center text-lg font-bold text-white transition hover:bg-green-600"
+      >
+        WhatsApp
+      </a>
+
+    </div>
+
+  </div>
+
+</div>
 </template>

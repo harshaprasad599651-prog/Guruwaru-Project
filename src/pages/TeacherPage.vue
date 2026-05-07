@@ -1,18 +1,21 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import type { Teacher } from '../types/teacher'
+import { supabase } from '../supabase'
 
 interface Props {
   teachers: Teacher[]
 }
 
 const props = defineProps<Props>()
-
 const emit = defineEmits(['back', 'submit-teacher'])
 
 const selectedMode = ref<'start' | 'login' | 'register'>('start')
 const previewImage = ref('')
+const imageFile = ref<File | null>(null)
 const submitted = ref(false)
+const submitting = ref(false)
+const savingProfile = ref(false)
 
 const loginUsername = ref('')
 const loginPassword = ref('')
@@ -39,24 +42,68 @@ const form = reactive({
 
 const hasTeachers = computed(() => props.teachers.length > 0)
 
+watch(
+  () => props.teachers,
+  (updatedTeachers) => {
+    if (!loggedTeacher.value) return
+
+    const updatedTeacher = updatedTeachers.find(
+      teacher => teacher.id === loggedTeacher.value?.id
+    )
+
+    if (updatedTeacher) {
+      loggedTeacher.value = updatedTeacher
+    }
+  },
+  { deep: true }
+)
+
 const handleImageUpload = (event: Event) => {
   const target = event.target as HTMLInputElement
 
   if (target.files && target.files[0]) {
     const file = target.files[0]
+    imageFile.value = file
     previewImage.value = URL.createObjectURL(file)
   }
 }
 
-const submitForm = () => {
+const submitForm = async () => {
+  submitting.value = true
+
+  let uploadedPhotoUrl = ''
+
+  if (imageFile.value) {
+    const fileExt = imageFile.value.name.split('.').pop()
+    const fileName = `${Date.now()}.${fileExt}`
+    const filePath = `teachers/${fileName}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('teacher-images')
+      .upload(filePath, imageFile.value)
+
+    if (uploadError) {
+      alert(uploadError.message)
+      submitting.value = false
+      return
+    }
+
+    const { data } = supabase.storage
+      .from('teacher-images')
+      .getPublicUrl(filePath)
+
+    uploadedPhotoUrl = data.publicUrl
+  }
+
   emit('submit-teacher', {
     id: Date.now(),
     ...form,
-    photoUrl: previewImage.value,
+    photoUrl: uploadedPhotoUrl,
     status: 'pending',
     isActive: true,
   })
 
+  submitting.value = false
   submitted.value = true
 }
 
@@ -80,6 +127,33 @@ const logoutTeacher = () => {
   loginUsername.value = ''
   loginPassword.value = ''
   selectedMode.value = 'start'
+}
+
+const updateTeacherProfile = async () => {
+  if (!loggedTeacher.value) return
+
+  savingProfile.value = true
+
+  const { error } = await supabase
+    .from('teachers')
+    .update({
+      fee: loggedTeacher.value.fee,
+      experience: loggedTeacher.value.experience,
+      qualification: loggedTeacher.value.qualification,
+      phone: loggedTeacher.value.phone,
+      whatsapp: loggedTeacher.value.whatsapp,
+      description: loggedTeacher.value.description,
+    })
+    .eq('id', loggedTeacher.value.id)
+
+  savingProfile.value = false
+
+  if (error) {
+    alert(error.message)
+    return
+  }
+
+  alert('Profile updated successfully!')
 }
 </script>
 
@@ -255,7 +329,7 @@ const logoutTeacher = () => {
           </p>
         </div>
 
-        <!-- Approved -->
+        <!-- Approved Editable Profile -->
         <div
           v-else
           class="mt-8 rounded-3xl border border-green-200 bg-green-50 p-8"
@@ -269,16 +343,89 @@ const logoutTeacher = () => {
           </p>
 
           <div class="mt-6 grid gap-4 md:grid-cols-2">
-            <p><b>Class Types:</b> {{ loggedTeacher.modes.join(', ') }}</p>
-            <p><b>Fee:</b> {{ loggedTeacher.fee || 'Not mentioned' }}</p>
-            <p><b>Experience:</b> {{ loggedTeacher.experience || 'Not mentioned' }}</p>
-            <p><b>Qualification:</b> {{ loggedTeacher.qualification || 'Not mentioned' }}</p>
-            <p><b>Phone:</b> {{ loggedTeacher.phone }}</p>
-            <p><b>WhatsApp:</b> {{ loggedTeacher.whatsapp || 'Not mentioned' }}</p>
+
+            <div>
+              <label class="mb-2 block font-semibold text-gray-700">
+                Class Types
+              </label>
+
+              <div class="rounded-2xl bg-white p-4 text-gray-700">
+                {{ loggedTeacher.modes.join(', ') }}
+              </div>
+            </div>
+
+            <div>
+              <label class="mb-2 block font-semibold text-gray-700">
+                Monthly Fee
+              </label>
+
+              <input
+                v-model="loggedTeacher.fee"
+                type="text"
+                class="w-full rounded-2xl border border-gray-300 px-4 py-3 outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label class="mb-2 block font-semibold text-gray-700">
+                Experience
+              </label>
+
+              <input
+                v-model="loggedTeacher.experience"
+                type="text"
+                class="w-full rounded-2xl border border-gray-300 px-4 py-3 outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label class="mb-2 block font-semibold text-gray-700">
+                Qualification
+              </label>
+
+              <input
+                v-model="loggedTeacher.qualification"
+                type="text"
+                class="w-full rounded-2xl border border-gray-300 px-4 py-3 outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label class="mb-2 block font-semibold text-gray-700">
+                Phone Number
+              </label>
+
+              <input
+                v-model="loggedTeacher.phone"
+                type="text"
+                class="w-full rounded-2xl border border-gray-300 px-4 py-3 outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label class="mb-2 block font-semibold text-gray-700">
+                WhatsApp
+              </label>
+
+              <input
+                v-model="loggedTeacher.whatsapp"
+                type="text"
+                class="w-full rounded-2xl border border-gray-300 px-4 py-3 outline-none focus:border-blue-500"
+              />
+            </div>
+
           </div>
 
-          <div class="mt-5 rounded-2xl bg-white p-5 text-gray-700">
-            {{ loggedTeacher.description }}
+          <div class="mt-5">
+            <label class="mb-2 block font-semibold text-gray-700">
+              About Classes
+            </label>
+
+            <textarea
+              v-model="loggedTeacher.description"
+              rows="6"
+              class="w-full rounded-2xl border border-gray-300 px-4 py-3 outline-none focus:border-blue-500"
+            ></textarea>
           </div>
 
           <div
@@ -288,6 +435,14 @@ const logoutTeacher = () => {
             Visibility:
             {{ loggedTeacher.isActive ? 'Active - Students can see your profile' : 'Deactivated - Students cannot see your profile' }}
           </div>
+
+          <button
+            @click="updateTeacherProfile"
+            :disabled="savingProfile"
+            class="mt-6 w-full rounded-2xl bg-blue-600 py-4 text-lg font-bold text-white transition hover:bg-blue-700 disabled:bg-gray-400"
+          >
+            {{ savingProfile ? 'Saving...' : 'Save Profile Changes' }}
+          </button>
         </div>
       </div>
 
@@ -581,9 +736,10 @@ const logoutTeacher = () => {
 
           <button
             type="submit"
-            class="mt-8 w-full rounded-2xl bg-blue-600 py-4 text-lg font-bold text-white shadow-lg transition hover:bg-blue-700"
+            :disabled="submitting"
+            class="mt-8 w-full rounded-2xl bg-blue-600 py-4 text-lg font-bold text-white shadow-lg transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
           >
-            Submit Profile for Admin Approval
+            {{ submitting ? 'Uploading...' : 'Submit Profile for Admin Approval' }}
           </button>
 
           <button

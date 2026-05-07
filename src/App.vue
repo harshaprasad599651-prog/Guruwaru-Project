@@ -6,33 +6,41 @@ import StudentPage from './pages/StudentPage.vue'
 import TeacherPage from './pages/TeacherPage.vue'
 import AdminPage from './pages/AdminPage.vue'
 
+
 import { supabase } from './supabase'
 import type { Teacher } from './types/teacher'
+
+interface DatabaseTeacher {
+  id: number
+  username: string
+  password: string
+  name: string
+  photo_url: string | null
+  subject: string
+  grade: string
+  district: string
+  city: string
+  modes: string[]
+  fee: string | null
+  experience: string | null
+  qualification: string | null
+  phone: string
+  whatsapp: string | null
+  description: string
+  status: 'pending' | 'approved'
+  is_active: boolean
+}
 
 const currentPage = ref('home')
 const teachers = ref<Teacher[]>([])
 const loading = ref(false)
 
 const isAdminLoggedIn = ref(false)
-const adminUsername = ref('')
+const adminEmail = ref('')
 const adminPassword = ref('')
 const loginError = ref('')
 
-const approvedActiveTeachers = computed(() =>
-  teachers.value.filter(
-    teacher => teacher.status === 'approved' && teacher.isActive
-  )
-)
-
-const pendingTeachers = computed(() =>
-  teachers.value.filter(teacher => teacher.status === 'pending')
-)
-
-const navigate = (page: string) => {
-  currentPage.value = page
-}
-
-const mapDatabaseTeacher = (item: any): Teacher => {
+const mapDatabaseTeacher = (item: DatabaseTeacher): Teacher => {
   return {
     id: item.id,
     username: item.username,
@@ -69,8 +77,22 @@ const loadTeachers = async () => {
     return
   }
 
-  teachers.value = data.map(mapDatabaseTeacher)
+  teachers.value = (data as DatabaseTeacher[]).map(mapDatabaseTeacher)
   loading.value = false
+}
+
+const approvedActiveTeachers = computed(() =>
+  teachers.value.filter(
+    teacher => teacher.status === 'approved' && teacher.isActive
+  )
+)
+
+const pendingTeachers = computed(() =>
+  teachers.value.filter(teacher => teacher.status === 'pending')
+)
+
+const navigate = (page: string) => {
+  currentPage.value = page
 }
 
 const addTeacher = async (teacher: Teacher) => {
@@ -164,18 +186,26 @@ const deleteTeacher = async (id: number) => {
   await loadTeachers()
 }
 
-const adminLogin = () => {
-  if (adminUsername.value === 'admin' && adminPassword.value === '1234') {
-    isAdminLoggedIn.value = true
-    loginError.value = ''
-  } else {
-    loginError.value = 'Invalid username or password'
+const adminLogin = async () => {
+  const { error } = await supabase.auth.signInWithPassword({
+    email: adminEmail.value,
+    password: adminPassword.value,
+  })
+
+  if (error) {
+    loginError.value = 'Invalid email or password'
+    return
   }
+
+  isAdminLoggedIn.value = true
+  loginError.value = ''
 }
 
-const adminLogout = () => {
+const adminLogout = async () => {
+  await supabase.auth.signOut()
+
   isAdminLoggedIn.value = false
-  adminUsername.value = ''
+  adminEmail.value = ''
   adminPassword.value = ''
   loginError.value = ''
   currentPage.value = 'home'
@@ -183,6 +213,21 @@ const adminLogout = () => {
 
 onMounted(() => {
   loadTeachers()
+
+  supabase
+    .channel('teachers-realtime')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'teachers',
+      },
+      () => {
+        loadTeachers()
+      }
+    )
+    .subscribe()
 })
 </script>
 
@@ -230,9 +275,9 @@ onMounted(() => {
         </p>
 
         <input
-          v-model="adminUsername"
-          type="text"
-          placeholder="Username"
+          v-model="adminEmail"
+          type="email"
+          placeholder="Admin email"
           class="mt-8 w-full rounded-2xl border border-gray-300 px-4 py-3 outline-none transition focus:border-blue-500"
         />
 
@@ -265,7 +310,7 @@ onMounted(() => {
         </button>
 
         <p class="mt-6 text-center text-sm text-gray-400">
-          Demo login: admin / 1234
+          Login using Supabase admin account
         </p>
 
       </div>
