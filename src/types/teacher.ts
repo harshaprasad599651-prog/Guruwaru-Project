@@ -22,4 +22,6 @@ export interface Teacher {
   description: string
   status: 'pending' | 'approved'
   isActive: boolean
+  isFeatured: boolean
+  isPremium: boolean
 }

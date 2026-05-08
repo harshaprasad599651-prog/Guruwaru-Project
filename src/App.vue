@@ -6,7 +6,6 @@ import StudentPage from './pages/StudentPage.vue'
 import TeacherPage from './pages/TeacherPage.vue'
 import AdminPage from './pages/AdminPage.vue'
 
-
 import { supabase } from './supabase'
 import type { Teacher } from './types/teacher'
 
@@ -29,6 +28,8 @@ interface DatabaseTeacher {
   description: string
   status: 'pending' | 'approved'
   is_active: boolean
+  is_featured: boolean
+  is_premium: boolean
 }
 
 const currentPage = ref('home')
@@ -60,6 +61,8 @@ const mapDatabaseTeacher = (item: DatabaseTeacher): Teacher => {
     description: item.description,
     status: item.status,
     isActive: item.is_active,
+    isFeatured: item.is_featured,
+    isPremium: item.is_premium,
   }
 }
 
@@ -117,6 +120,8 @@ const addTeacher = async (teacher: Teacher) => {
       description: teacher.description,
       status: teacher.status,
       is_active: teacher.isActive,
+      is_featured: teacher.isFeatured,
+      is_premium: teacher.isPremium,
     })
 
   if (error) {
@@ -147,9 +152,7 @@ const approveTeacher = async (id: number) => {
 const toggleTeacherActive = async (id: number) => {
   const teacher = teachers.value.find(item => item.id === id)
 
-  if (!teacher) {
-    return
-  }
+  if (!teacher) return
 
   const { error } = await supabase
     .from('teachers')
@@ -166,12 +169,50 @@ const toggleTeacherActive = async (id: number) => {
   await loadTeachers()
 }
 
+const toggleTeacherFeatured = async (id: number) => {
+  const teacher = teachers.value.find(item => item.id === id)
+
+  if (!teacher) return
+
+  const { error } = await supabase
+    .from('teachers')
+    .update({
+      is_featured: !teacher.isFeatured,
+    })
+    .eq('id', id)
+
+  if (error) {
+    alert(error.message)
+    return
+  }
+
+  await loadTeachers()
+}
+
+const toggleTeacherPremium = async (id: number) => {
+  const teacher = teachers.value.find(item => item.id === id)
+
+  if (!teacher) return
+
+  const { error } = await supabase
+    .from('teachers')
+    .update({
+      is_premium: !teacher.isPremium,
+    })
+    .eq('id', id)
+
+  if (error) {
+    alert(error.message)
+    return
+  }
+
+  await loadTeachers()
+}
+
 const deleteTeacher = async (id: number) => {
   const confirmed = confirm('Are you sure you want to delete this teacher?')
 
-  if (!confirmed) {
-    return
-  }
+  if (!confirmed) return
 
   const { error } = await supabase
     .from('teachers')
@@ -241,10 +282,11 @@ onMounted(() => {
       Loading...
     </div>
 
-    <Home
-      v-if="currentPage === 'home'"
-      @navigate="navigate"
-    />
+      <Home
+        v-if="currentPage === 'home'"
+        :teachers="approvedActiveTeachers"
+        @navigate="navigate"
+      />
 
     <StudentPage
       v-if="currentPage === 'student'"
@@ -322,6 +364,8 @@ onMounted(() => {
       :all-teachers="teachers"
       @approve="approveTeacher"
       @toggle-active="toggleTeacherActive"
+      @toggle-featured="toggleTeacherFeatured"
+      @toggle-premium="toggleTeacherPremium"
       @delete-teacher="deleteTeacher"
       @back="navigate('home')"
       @logout="adminLogout"

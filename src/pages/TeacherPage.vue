@@ -95,17 +95,18 @@ const submitForm = async () => {
     uploadedPhotoUrl = data.publicUrl
   }
 
-  emit('submit-teacher', {
-    id: Date.now(),
-    ...form,
-    photoUrl: uploadedPhotoUrl,
-    status: 'pending',
-    isActive: true,
-  })
-
-  submitting.value = false
-  submitted.value = true
-}
+    emit('submit-teacher', {
+      id: Date.now(),
+      ...form,
+      photoUrl: uploadedPhotoUrl,
+      status: 'pending',
+      isActive: true,
+      isFeatured: false,
+      isPremium: false,
+    })
+      submitting.value = false
+      submitted.value = true
+    }
 
 const teacherLogin = () => {
   const teacher = props.teachers.find(

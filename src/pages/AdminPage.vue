@@ -13,25 +13,24 @@ const emit = defineEmits([
   'logout',
   'approve',
   'toggle-active',
+  'toggle-featured',
+  'toggle-premium',
   'delete-teacher',
 ])
 </script>
 
 <template>
   <div class="min-h-screen bg-linear-to-br from-blue-50 via-white to-yellow-50 px-4 py-6">
-
     <div class="mx-auto max-w-7xl">
 
-      <!-- Top -->
       <div class="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-
         <div>
           <h1 class="text-3xl font-extrabold text-blue-700 md:text-4xl">
             Admin Panel
           </h1>
 
           <p class="mt-2 text-gray-600">
-            Approve, deactivate, and delete teacher profiles
+            Manage approvals, visibility, featured teachers, and premium badges
           </p>
         </div>
 
@@ -50,7 +49,6 @@ const emit = defineEmits([
             Logout
           </button>
         </div>
-
       </div>
 
       <!-- Pending Section -->
@@ -73,7 +71,6 @@ const emit = defineEmits([
             class="rounded-3xl border border-yellow-200 bg-white p-6 shadow-lg"
           >
             <div class="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-
               <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <img
                   v-if="teacher.photoUrl"
@@ -118,7 +115,6 @@ const emit = defineEmits([
               >
                 ✅ Approve
               </button>
-
             </div>
           </div>
         </div>
@@ -141,8 +137,29 @@ const emit = defineEmits([
           <div
             v-for="teacher in allTeachers"
             :key="teacher.id"
-            class="rounded-3xl border border-blue-100 bg-white p-6 shadow-lg"
+            class="rounded-3xl border p-6 shadow-lg"
+            :class="teacher.isPremium
+              ? 'border-yellow-300 bg-yellow-50'
+              : teacher.isFeatured
+                ? 'border-blue-300 bg-blue-50'
+                : 'border-blue-100 bg-white'"
           >
+            <div class="mb-4 flex flex-wrap gap-2">
+              <span
+                v-if="teacher.isPremium"
+                class="rounded-full bg-yellow-400 px-3 py-1 text-xs font-extrabold text-gray-900"
+              >
+                👑 Premium
+              </span>
+
+              <span
+                v-if="teacher.isFeatured"
+                class="rounded-full bg-blue-600 px-3 py-1 text-xs font-extrabold text-white"
+              >
+                ⭐ Featured
+              </span>
+            </div>
+
             <div class="flex items-center gap-4">
               <img
                 v-if="teacher.photoUrl"
@@ -208,6 +225,26 @@ const emit = defineEmits([
               </button>
 
               <button
+                @click="emit('toggle-premium', teacher.id)"
+                class="rounded-2xl py-3 font-bold transition"
+                :class="teacher.isPremium
+                  ? 'bg-yellow-200 text-yellow-800 hover:bg-yellow-300'
+                  : 'bg-yellow-500 text-white hover:bg-yellow-600'"
+              >
+                {{ teacher.isPremium ? 'Remove Premium' : 'Make Premium' }}
+              </button>
+
+              <button
+                @click="emit('toggle-featured', teacher.id)"
+                class="rounded-2xl py-3 font-bold transition"
+                :class="teacher.isFeatured
+                  ? 'bg-blue-200 text-blue-800 hover:bg-blue-300'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'"
+              >
+                {{ teacher.isFeatured ? 'Remove Featured' : 'Make Featured' }}
+              </button>
+
+              <button
                 @click="emit('toggle-active', teacher.id)"
                 class="rounded-2xl py-3 font-bold text-white transition"
                 :class="teacher.isActive
@@ -224,12 +261,10 @@ const emit = defineEmits([
                 Delete
               </button>
             </div>
-
           </div>
         </div>
       </section>
 
     </div>
-
   </div>
 </template>
